@@ -8,7 +8,7 @@ data and SSH key injection, and a primary VNIC on a chosen subnet.
 
 ```hcl
 module "instance" {
-  source = "github.com/cybercapybara/terraform-oci-instance"
+  source = "github.com/moveeeax/terraform-oci-instance"
 
   compartment_id      = var.compartment_id
   availability_domain = var.availability_domain
