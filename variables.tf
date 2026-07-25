@@ -54,21 +54,87 @@ variable "hostname_label" {
 }
 
 variable "ssh_authorized_keys" {
-  description = "SSH public key(s) injected into the instance via cloud-init. Null skips injection."
+  description = <<-EOT
+    SSH public key(s) injected into the instance via cloud-init, one per line, in
+    OpenSSH `authorized_keys` format. Null skips injection.
+
+    This is validated rather than passed through blindly: a malformed or
+    placeholder value is accepted by `terraform validate` and by the OCI API, and
+    only shows up later as an instance nobody can log into.
+  EOT
   type        = string
   default     = null
+
+  validation {
+    condition = var.ssh_authorized_keys == null ? true : alltrue([
+      for key in compact([for line in split("\n", var.ssh_authorized_keys) : trimspace(line)]) :
+      can(regex("^(?:ssh-(?:rsa|dss|ed25519)|ecdsa-sha2-nistp(?:256|384|521)|sk-ssh-ed25519@openssh\\.com|sk-ecdsa-sha2-nistp256@openssh\\.com) +AAAA[0-9A-Za-z+/]{50,}={0,3}( .+)?$", key))
+    ])
+    error_message = "Each non-empty line of ssh_authorized_keys must be a parseable OpenSSH public key, e.g. \"ssh-ed25519 AAAAC3Nza... user@host\". Placeholder text and private keys are rejected."
+  }
+
+  validation {
+    condition     = var.ssh_authorized_keys == null ? true : length(compact([for line in split("\n", var.ssh_authorized_keys) : trimspace(line)])) > 0
+    error_message = "ssh_authorized_keys must contain at least one key, or be null to skip injection."
+  }
 }
 
 variable "user_data" {
-  description = "Base64-encoded cloud-init user data. Null skips it."
+  description = <<-EOT
+    Base64-encoded cloud-init user data. Null skips it.
+
+    Marked sensitive: cloud-init payloads routinely carry bootstrap tokens,
+    passwords and join secrets, and instance metadata is readable by anything
+    running on the instance.
+  EOT
   type        = string
   default     = null
+  sensitive   = true
+
+  validation {
+    condition     = var.user_data == null ? true : can(regex("^[A-Za-z0-9+/=[:space:]]+$", var.user_data))
+    error_message = "user_data must be base64-encoded (OCI does not encode it for you). Wrap the raw script in base64encode()."
+  }
 }
 
 variable "boot_volume_size_in_gbs" {
   description = "Size of the boot volume in GB. Null uses the image default."
   type        = number
   default     = null
+}
+
+variable "boot_volume_kms_key_id" {
+  description = <<-EOT
+    OCID of a Vault master encryption key used to encrypt the boot volume.
+    Null uses the Oracle-managed service key, which still encrypts at rest but
+    leaves key rotation and revocation outside your control.
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "is_pv_encryption_in_transit_enabled" {
+  description = <<-EOT
+    Encrypt traffic between the instance and its paravirtualized volume
+    attachments. OCI defaults this to false; this module defaults it to true.
+
+    Set to false for shapes or images that do not support in-transit encryption.
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "are_legacy_imds_endpoints_disabled" {
+  description = <<-EOT
+    Disable the legacy (v1) instance metadata service endpoints, leaving only
+    the v2 endpoints that require an `Authorization: Bearer Oracle` header.
+    This is OCI's analogue of requiring AWS IMDSv2. OCI defaults this to false
+    (v1 permitted); this module defaults it to true.
+
+    Set to false only for images or agents that still call the v1 endpoint.
+  EOT
+  type        = bool
+  default     = true
 }
 
 variable "freeform_tags" {
