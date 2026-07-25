@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and replace every value with one from your tenancy.
+# `terraform.tfvars` is gitignored; this template is not.
+
+compartment_id      = "ocid1.compartment.oc1..<your-compartment>"
+availability_domain = "<prefix>:US-ASHBURN-AD-1"
+source_image_id     = "ocid1.image.oc1..<platform-or-custom-image>"
+subnet_id           = "ocid1.subnet.oc1..<private-subnet>"
+
+# Optional. Must be a real, parseable OpenSSH public key — the module rejects
+# placeholder text at plan time rather than building an unreachable instance.
+# ssh_public_key = "ssh-ed25519 AAAAC3Nza... you@example.com"

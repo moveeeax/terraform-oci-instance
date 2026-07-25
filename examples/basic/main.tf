@@ -17,6 +17,10 @@ module "instance" {
   subnet_id        = var.subnet_id
   assign_public_ip = false
 
+  # Supplied by the operator rather than hardcoded: a placeholder key here would
+  # pass `terraform validate` and only fail once the instance is unreachable.
+  ssh_authorized_keys = var.ssh_public_key
+
   freeform_tags = {
     Environment = "sandbox"
     ManagedBy   = "terraform"
@@ -41,6 +45,12 @@ variable "source_image_id" {
 variable "subnet_id" {
   description = "OCID of the subnet for the example instance VNIC."
   type        = string
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key to authorize on the example instance, e.g. file(\"~/.ssh/id_ed25519.pub\"). Null skips key injection."
+  type        = string
+  default     = null
 }
 
 output "instance_id" {
