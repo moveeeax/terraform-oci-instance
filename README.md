@@ -33,7 +33,7 @@ under your control.
 
 ```hcl
 module "instance" {
-  source = "github.com/moveeeax/terraform-oci-instance"
+  source = "github.com/moveeeax/terraform-oci-instance?ref=v1.0.0"
 
   compartment_id      = var.compartment_id
   availability_domain = var.availability_domain
