@@ -144,3 +144,101 @@ run "accepts_base64_user_data" {
     error_message = "Base64 user_data must be passed through unchanged."
   }
 }
+
+run "nsg_membership_is_unmanaged_by_default" {
+  command = plan
+
+  # Null keeps the pre-nsg_ids behaviour: nothing is sent, so existing instances
+  # see no diff and NSGs attached outside this module are left alone.
+  assert {
+    condition     = var.nsg_ids == null && var.private_ip == null && var.skip_source_dest_check == null
+    error_message = "nsg_ids, private_ip and skip_source_dest_check must default to null."
+  }
+}
+
+run "vnic_passthroughs_reach_the_primary_vnic" {
+  command = plan
+
+  variables {
+    nsg_ids = [
+      "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaweb",
+      "ocid1.networksecuritygroup.oc1.iad.aaaaaaaassh",
+    ]
+    private_ip             = "10.0.1.10"
+    skip_source_dest_check = true
+  }
+
+  assert {
+    condition = oci_core_instance.this.create_vnic_details[0].nsg_ids == toset([
+      "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaweb",
+      "ocid1.networksecuritygroup.oc1.iad.aaaaaaaassh",
+    ])
+    error_message = "nsg_ids must reach create_vnic_details.nsg_ids."
+  }
+
+  assert {
+    condition     = oci_core_instance.this.create_vnic_details[0].private_ip == "10.0.1.10"
+    error_message = "private_ip must reach create_vnic_details.private_ip."
+  }
+
+  assert {
+    condition     = oci_core_instance.this.create_vnic_details[0].skip_source_dest_check == true
+    error_message = "skip_source_dest_check must reach create_vnic_details.skip_source_dest_check."
+  }
+}
+
+run "empty_nsg_list_is_enforced" {
+  command = plan
+
+  variables {
+    nsg_ids = []
+  }
+
+  assert {
+    condition     = length(oci_core_instance.this.create_vnic_details[0].nsg_ids) == 0
+    error_message = "An explicit empty nsg_ids must be sent so NSGs can be detached."
+  }
+}
+
+run "rejects_more_than_five_nsgs" {
+  command = plan
+
+  variables {
+    nsg_ids = [for i in range(6) : "ocid1.networksecuritygroup.oc1.iad.aaaaaaaa${i}"]
+  }
+
+  expect_failures = [var.nsg_ids]
+}
+
+run "rejects_non_nsg_ocid" {
+  command = plan
+
+  variables {
+    nsg_ids = ["ocid1.securitylist.oc1.iad.aaaaaaaaexample"]
+  }
+
+  expect_failures = [var.nsg_ids]
+}
+
+run "rejects_duplicate_nsg_ids" {
+  command = plan
+
+  variables {
+    nsg_ids = [
+      "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaweb",
+      "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaweb",
+    ]
+  }
+
+  expect_failures = [var.nsg_ids]
+}
+
+run "rejects_malformed_private_ip" {
+  command = plan
+
+  variables {
+    private_ip = "10.0.1.300"
+  }
+
+  expect_failures = [var.private_ip]
+}
