@@ -53,6 +53,52 @@ variable "hostname_label" {
   default     = null
 }
 
+variable "nsg_ids" {
+  description = <<-EOT
+    OCIDs of network security groups to attach to the primary VNIC, at most five
+    (the OCI limit per VNIC). The NSGs must be in the subnet's VCN.
+
+    Null (the default) leaves the VNIC's NSG membership unmanaged, as before this
+    input existed, so the instance is protected only by the subnet's security lists
+    unless NSGs are attached elsewhere. A list, including [], is enforced: entries
+    removed later are detached from the VNIC.
+  EOT
+  type        = list(string)
+  default     = null
+
+  validation {
+    condition     = var.nsg_ids == null || length(coalesce(var.nsg_ids, [])) <= 5
+    error_message = "A VNIC can be in at most five network security groups."
+  }
+
+  validation {
+    condition     = alltrue([for id in coalesce(var.nsg_ids, []) : can(regex("^ocid1\\.networksecuritygroup\\.", id))])
+    error_message = "nsg_ids must contain network security group OCIDs (ocid1.networksecuritygroup...)."
+  }
+
+  validation {
+    condition     = length(distinct(coalesce(var.nsg_ids, []))) == length(coalesce(var.nsg_ids, []))
+    error_message = "nsg_ids must not contain duplicates."
+  }
+}
+
+variable "private_ip" {
+  description = "Private IPv4 address for the primary VNIC, from the subnet's CIDR. Null lets OCI pick a free address."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.private_ip == null || can(regex("^(\\d{1,3}\\.){3}\\d{1,3}$", var.private_ip)) && can(cidrnetmask("${coalesce(var.private_ip, "0.0.0.0")}/32"))
+    error_message = "private_ip must be an IPv4 address such as 10.0.1.10."
+  }
+}
+
+variable "skip_source_dest_check" {
+  description = "Disable the source/destination check on the primary VNIC, needed when the instance routes traffic (NAT instance, firewall, VPN). Null keeps the OCI default (check enabled)."
+  type        = bool
+  default     = null
+}
+
 variable "ssh_authorized_keys" {
   description = <<-EOT
     SSH public key(s) injected into the instance via cloud-init, one per line, in

@@ -39,6 +39,12 @@ resource "oci_core_instance" "this" {
     subnet_id        = var.subnet_id
     assign_public_ip = var.assign_public_ip
     hostname_label   = var.hostname_label
+
+    # NSGs are OCI's per-VNIC firewall; without them only the subnet's security
+    # lists apply.
+    nsg_ids                = var.nsg_ids
+    private_ip             = var.private_ip
+    skip_source_dest_check = var.skip_source_dest_check
   }
 
   # Encrypt traffic between the instance and its paravirtualized boot/block

@@ -16,6 +16,7 @@ module "instance" {
   source_image_id  = var.source_image_id
   subnet_id        = var.subnet_id
   assign_public_ip = false
+  nsg_ids          = var.nsg_ids
 
   # Supplied by the operator rather than hardcoded: a placeholder key here would
   # pass `terraform validate` and only fail once the instance is unreachable.
@@ -45,6 +46,12 @@ variable "source_image_id" {
 variable "subnet_id" {
   description = "OCID of the subnet for the example instance VNIC."
   type        = string
+}
+
+variable "nsg_ids" {
+  description = "Network security group OCIDs for the example instance VNIC. Null leaves NSG membership unmanaged."
+  type        = list(string)
+  default     = null
 }
 
 variable "ssh_public_key" {

@@ -9,3 +9,6 @@ subnet_id           = "ocid1.subnet.oc1..<private-subnet>"
 # Optional. Must be a real, parseable OpenSSH public key — the module rejects
 # placeholder text at plan time rather than building an unreachable instance.
 # ssh_public_key = "ssh-ed25519 AAAAC3Nza... you@example.com"
+
+# Optional. Network security groups for the VNIC, at most five, in the subnet's VCN.
+# nsg_ids = ["ocid1.networksecuritygroup.oc1..<app-nsg>"]

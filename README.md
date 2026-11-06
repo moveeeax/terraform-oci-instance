@@ -29,6 +29,19 @@ Boot volumes are always encrypted at rest. Set `boot_volume_kms_key_id` to use y
 Vault key instead of the Oracle-managed service key, so rotation and revocation stay
 under your control.
 
+## Network security groups
+
+`nsg_ids` attaches up to five network security groups (the OCI limit per VNIC) to the
+primary VNIC; they must be in the subnet's VCN. The default, `null`, leaves NSG
+membership unmanaged, which is how the module behaved before the input existed: the
+instance is filtered only by the subnet's security lists, and NSGs attached outside the
+module are left alone. Any list, `[]` included, is enforced, so removing an entry
+detaches that NSG.
+
+`private_ip` pins the primary VNIC's private address, and `skip_source_dest_check = true`
+lets the instance forward traffic it did not originate (a NAT instance or firewall).
+Both default to `null`, which keeps OCI's behaviour.
+
 ## Usage
 
 ```hcl
@@ -49,6 +62,9 @@ module "instance" {
   subnet_id           = var.subnet_id
   assign_public_ip    = false
   ssh_authorized_keys = file("~/.ssh/id_ed25519.pub")
+
+  # Optional: firewall the VNIC with network security groups.
+  nsg_ids = [var.app_nsg_id]
 
   # Optional: encrypt the boot volume with your own Vault key.
   boot_volume_kms_key_id = var.boot_volume_kms_key_id
@@ -84,6 +100,9 @@ A runnable example lives in [`examples/basic`](examples/basic); copy
 | `subnet_id`               | OCID of the subnet for the primary VNIC.                          | `string`      | n/a                    |   yes    |
 | `assign_public_ip`        | Whether to assign a public IP to the primary VNIC.                | `bool`        | `false`                |    no    |
 | `hostname_label`          | Hostname label for the primary VNIC.                              | `string`      | `null`                 |    no    |
+| `nsg_ids`                 | NSG OCIDs for the primary VNIC, at most 5. Null leaves NSGs unmanaged. | `list(string)` | `null`          |    no    |
+| `private_ip`              | Private IPv4 for the primary VNIC. Null lets OCI choose.          | `string`      | `null`                 |    no    |
+| `skip_source_dest_check`  | Disable the source/destination check on the primary VNIC.         | `bool`        | `null`                 |    no    |
 | `ssh_authorized_keys`     | SSH public key(s), one per line, in OpenSSH format. Validated.    | `string`      | `null`                 |    no    |
 | `user_data`               | Base64-encoded cloud-init user data. Sensitive.                   | `string`      | `null`                 |    no    |
 | `boot_volume_size_in_gbs` | Size of the boot volume in GB. Null uses the image default.       | `number`      | `null`                 |    no    |
